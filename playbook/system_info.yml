@@ -1,0 +1,95 @@
+---
+- name: Gather system information for system administrators
+  hosts: all
+  become: true
+  tasks:
+
+    # Gather all available system facts using Ansible's setup module
+    - name: Gather system facts
+      setup:
+
+    # Gather disk usage information using the 'df' command
+    - name: Get disk usage information
+      shell: df -h
+      register: disk_usage
+
+    - name: Show disk usage
+      debug:
+        var: disk_usage.stdout_lines
+
+    # Gather memory usage information using the 'free' command
+    - name: Get memory usage information
+      shell: free -h
+      register: memory_usage
+
+    - name: Show memory usage
+      debug:
+        var: memory_usage.stdout_lines
+
+    # Gather CPU information using the 'lscpu' command
+    - name: Get CPU information
+      shell: lscpu
+      register: cpu_info
+
+    - name: Show CPU information
+      debug:
+        var: cpu_info.stdout_lines
+
+    # Get network interfaces details using the 'ip a' command
+    - name: Get network interfaces information
+      shell: ip a
+      register: network_info
+
+    - name: Show network interfaces information
+      debug:
+        var: network_info.stdout_lines
+
+    # Get list of users and groups
+    - name: Get users and groups
+      shell: cat /etc/passwd
+      register: users_groups
+
+    - name: Show users and groups
+      debug:
+        var: users_groups.stdout_lines
+
+    # Gather operating system version
+    - name: Gather operating system version
+      command: uname -a
+      register: os_version
+
+    - name: Show operating system version
+      debug:
+        var: os_version.stdout
+
+    # Gather hostname
+    - name: Get hostname
+      command: hostname
+      register: system_hostname
+
+    - name: Show hostname
+      debug:
+        var: system_hostname.stdout
+
+    # Gather all installed packages for the system (Debian-based example)
+    - name: Get installed packages (Debian-based)
+      shell: dpkg -l
+      register: installed_packages_deb
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Show installed packages (Debian-based)
+      debug:
+        var: installed_packages_deb.stdout_lines
+      when: ansible_facts['os_family'] == 'Debian'
+
+    # Gather all installed packages for the system (RPM-based example)
+    - name: Get installed packages (RPM-based)
+      shell: rpm -qa
+      register: installed_packages_rpm
+      when: ansible_facts['os_family'] == 'RedHat'
+
+    - name: Show installed packages (RPM-based)
+      debug:
+        var: installed_packages_rpm.stdout_lines
+      when: ansible_facts['os_family'] == 'RedHat'
+

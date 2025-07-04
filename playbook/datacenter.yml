@@ -1,0 +1,66 @@
+---
+- name: Apply storage data center iptables rules
+  hosts: storage
+  become: true
+
+  tasks:
+    - name: create rules Directory
+      shell: mkdir /etc/iptables
+    
+    # Rule 1: Allow SSH access from a specific management network
+    - name: Allow SSH from management network (192.168.10.0/24)
+      shell: iptables -A INPUT -p tcp -s 192.168.1.0/24 --dport 22 -j ACCEPT
+
+    # Rule 2: Allow NTP traffic for time synchronization
+    - name: Allow NTP traffic (UDP port 123)
+      shell: iptables -A INPUT -p udp --dport 123 -j ACCEPT
+
+    # Rule 3: Allow ICMP (ping) for network monitoring
+    - name: Allow ICMP (ping) traffic
+      shell: iptables -A INPUT -p icmp -j ACCEPT
+
+    # Rule 4: Allow traffic on storage protocols (e.g., NFS, iSCSI, SMB)
+    - name: Allow NFS traffic (TCP/UDP port 2049)
+      shell: iptables -A INPUT -p tcp --dport 2049 -j ACCEPT
+      shell: iptables -A INPUT -p udp --dport 2049 -j ACCEPT
+
+    - name: Allow iSCSI traffic (TCP port 3260)
+      shell: iptables -A INPUT -p tcp --dport 3260 -j ACCEPT
+
+    - name: Allow SMB traffic (TCP port 445)
+      shell: iptables -A INPUT -p tcp --dport 445 -j ACCEPT
+
+    # Rule 5: Log suspicious traffic (e.g., port scanning)
+    - name: Log suspicious traffic on uncommon ports
+      shell: iptables -A INPUT -p tcp --dport 1:1024 -j LOG --log-prefix 'Suspicious-TCP:'
+      shell: iptables -A INPUT -p udp --dport 1:1024 -j LOG --log-prefix 'Suspicious-UDP:'
+
+    # Rule 6: Drop all other traffic by default
+    - name: Drop all other traffic
+      shell: iptables -A INPUT -j DROP
+
+    # Rule 7: Allow established connections
+    - name: Allow established connections
+      shell: iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+
+    # Rule 8: Allow loopback traffic
+    - name: Allow loopback traffic
+      shell: iptables -A INPUT -i lo -j ACCEPT
+
+    - name: save Rules
+      shell: iptables-save > /etc/iptables/rules.v4
+    
+    # Flush existing rules (optional, use with caution)
+    - name: Flush all iptables rules
+      shell: iptables -F
+      ignore_errors: yes  # Continue if there are no rules to flush
+
+    # Display current iptables rules
+    - name: Display current iptables rules
+      shell: iptables -nvL --line-numbers
+      register: iptables_output
+
+    # Show iptables rules
+    - name: Show iptables rules
+      debug:
+        var: iptables_output.stdout

@@ -1,0 +1,104 @@
+---
+- name: Configure Firewall with iptables for Web Server (Flask, Nginx, Gunicorn)
+  hosts: all
+  become: true
+  tasks:
+
+    # Ensure iptables is installed (Debian-based systems)
+    - name: Install iptables on Debian-based systems
+      apt:
+        name: iptables
+        state: present
+      when: ansible_facts['os_family'] == 'Debian'
+
+    # Ensure iptables is installed (RPM-based systems)
+    - name: Install iptables on RPM-based systems
+      yum:
+        name: iptables
+        state: present
+      when: ansible_facts['os_family'] == 'RedHat'
+
+    # Ensure iptables is installed (openSUSE systems)
+    - name: Install iptables on openSUSE systems
+      zypper:
+        name: iptables
+        state: present
+      when: ansible_facts['os_family'] == 'Suse'
+
+    # Flush existing iptables rules (start fresh)
+    - name: Flush existing iptables rules
+      command: iptables -F
+      ignore_errors: yes
+
+    # Set default policies to DROP (Secure by default)
+    - name: Set default policies to DROP (secure by default)
+      blockinfile:
+        path: /etc/iptables/rules.v4
+        block: |
+          # Set default policies to drop all incoming and outgoing traffic
+          *filter
+          :INPUT DROP [0:0]
+          :FORWARD DROP [0:0]
+          :OUTPUT ACCEPT [0:0]
+          COMMIT
+      ignore_errors: yes
+
+    # Allow traffic on the loopback interface (necessary for local communication)
+    - name: Allow traffic on the loopback interface (lo)
+      command: iptables -A INPUT -i lo -j ACCEPT
+
+    # Allow incoming HTTP (port 80)
+    - name: Allow incoming HTTP traffic on port 80
+      command: iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+
+    # Allow incoming HTTPS (port 443)
+    - name: Allow incoming HTTPS traffic on port 443
+      command: iptables -A INPUT -p tcp --dport 443 -j ACCEPT
+
+    # Allow incoming SSH traffic on port 22 (for remote access)
+    - name: Allow incoming SSH traffic on port 22
+      command: iptables -A INPUT -p tcp --dport 22 -j ACCEPT
+
+    # Allow incoming traffic for Gunicorn (port 5005) for Flask app
+    - name: Allow incoming traffic for Gunicorn (port 5005) for Flask app
+      command: iptables -A INPUT -p tcp --dport 5005 -j ACCEPT
+
+    # Save iptables rules for persistence (Debian-based systems)
+    - name: Save iptables rules on Debian-based systems
+      command: iptables-save > /etc/iptables/rules.v4
+      when: ansible_facts['os_family'] == 'Debian'
+
+    # Save iptables rules for persistence (RPM-based systems)
+    - name: Save iptables rules on RPM-based systems
+      command: service iptables save
+      when: ansible_facts['os_family'] == 'RedHat'
+
+    # Save iptables rules for persistence (openSUSE systems)
+    - name: Save iptables rules on openSUSE systems
+      command: /usr/sbin/iptables-save > /etc/sysconfig/iptables
+      when: ansible_facts['os_family'] == 'Suse'
+
+    # Ensure iptables service is enabled and started (Debian-based systems)
+    - name: Enable and start iptables service on Debian-based systems
+      systemd:
+        name: iptables
+        state: started
+        enabled: yes
+      when: ansible_facts['os_family'] == 'Debian'
+
+    # Ensure iptables service is enabled and started (RPM-based systems)
+    - name: Enable and start iptables service on RPM-based systems
+      systemd:
+        name: iptables
+        state: started
+        enabled: yes
+      when: ansible_facts['os_family'] == 'RedHat'
+
+    # Ensure iptables service is enabled and started (openSUSE systems)
+    - name: Enable and start iptables service on openSUSE systems
+      systemd:
+        name: SuSEfirewall2
+        state: started
+        enabled: yes
+      when: ansible_facts['os_family'] == 'Suse'
+

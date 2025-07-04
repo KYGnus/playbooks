@@ -1,0 +1,10 @@
+---
+- name: Run iptables command on storage and webserver machines
+  hosts: storage,webservers
+  become: true                # This ensures that the task runs with sudo privileges
+  become_method: sudo
+
+  tasks:
+    - name: Run iptables -nvL
+      shell: iptables -nvL
+

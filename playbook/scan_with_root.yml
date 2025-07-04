@@ -1,0 +1,37 @@
+---
+- name: Scan systems for malware and rootkits with root privileges
+  hosts: all
+  become: true  # This will run all tasks with root privileges
+  become_method: sudo
+  become_user: root
+
+  tasks:
+    # Run ClamAV virus scan
+    - name: Run clamscan for virus scanning
+      shell: clamscan --remove --infected --recursive /
+      ignore_errors: yes
+
+    # Run Maldet scan for malware
+    - name: Run maldet scan
+      shell: /usr/local/sbin/maldet -a /
+      ignore_errors: yes
+
+    # Run rkhunter check for rootkits
+    - name: Run rkhunter check
+      shell: rkhunter --check --skip-keypress
+      ignore_errors: yes
+
+    # Run chkrootkit for additional rootkit scanning
+    - name: Run chkrootkit check
+      shell: chkrootkit
+      ignore_errors: yes
+
+    # Get firewall rules using iptables
+    - name: Get iptables firewall rules
+      shell: iptables -L -v -n
+      register: iptables_rules
+
+    - name: Show firewall rules
+      debug:
+        var: iptables_rules.stdout_lines
+

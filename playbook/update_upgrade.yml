@@ -1,0 +1,76 @@
+---
+- name: Update and upgrade packages on Debian, RPM-based, and openSUSE systems
+  hosts: all
+  become: true  # Use root privileges
+  tasks:
+
+    # Update and upgrade for Debian-based systems (e.g., Ubuntu, Lubuntu)
+    - name: Update and upgrade all packages on Debian-based systems
+      apt:
+        update_cache: yes  # Update the package cache
+        upgrade: dist      # Upgrade all packages to the latest available versions
+        cache_valid_time: 3600  # Make the cache valid for 1 hour
+      when: >
+        ansible_facts['os_family'] == 'Debian' or
+        ansible_facts['distribution'] in ['Ubuntu', 'Lubuntu']
+
+    # Update and upgrade for RPM-based systems (e.g., CentOS, RHEL, Fedora)
+    - name: Update and upgrade all packages on RPM-based systems
+      yum:
+        name: '*'
+        state: latest  # Install the latest versions of all packages
+      when: ansible_facts['os_family'] == 'RedHat'
+
+    - name: Update and upgrade all packages on Fedora-based systems (DNF)
+      dnf:
+        name: '*'
+        state: latest  # Install the latest versions of all packages
+      when: ansible_facts['distribution'] == 'Fedora'
+
+    # Update and upgrade for openSUSE systems
+    - name: Update and upgrade all packages on openSUSE systems
+      zypper:
+        name: '*'
+        state: latest  # Install the latest versions of all packages
+        update_cache: yes  # Refresh the repository cache
+      when: ansible_facts['distribution'] == 'openSUSE'
+
+    # Ensure that the system is up-to-date
+    - name: Clean up unused packages on Debian-based systems
+      apt:
+        autoremove: yes  # Remove unused packages
+        autoclean: yes   # Clean up old package files
+      when: >
+        ansible_facts['os_family'] == 'Debian' or
+        ansible_facts['distribution'] in ['Ubuntu', 'Lubuntu']
+
+    - name: Clean up unused packages on RPM-based systems
+      yum:
+        name: '*'
+        state: latest  # Ensure the system is completely up-to-date
+      when: ansible_facts['os_family'] == 'RedHat'
+
+    - name: Clean up unused packages on openSUSE systems
+      zypper:
+        name: '*'
+        state: latest  # Ensure the system is completely up-to-date
+      when: ansible_facts['distribution'] == 'openSUSE'
+
+    # Optionally, reboot if necessary (for kernel or critical updates)
+    - name: Reboot system if necessary (Debian-based)
+      reboot:
+      when: >
+        (ansible_facts['os_family'] == 'Debian' or
+        ansible_facts['distribution'] in ['Ubuntu', 'Lubuntu']) and
+        ansible_facts['pkg_mgr'] == 'apt'
+      ignore_errors: yes
+
+    - name: Reboot system if necessary (RPM-based)
+      reboot:
+      when: ansible_facts['os_family'] == 'RedHat' and ansible_facts['pkg_mgr'] in ['yum', 'dnf']
+      ignore_errors: yes
+
+    - name: Reboot system if necessary (openSUSE)
+      reboot:
+      when: ansible_facts['distribution'] == 'openSUSE' and ansible_facts['pkg_mgr'] == 'zypper'
+      ignore_errors: yes

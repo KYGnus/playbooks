@@ -1,0 +1,35 @@
+---
+- name: Scan systems for malware and rootkits
+  hosts: all
+  become: true
+  tasks:
+
+    # Scan system with ClamAV
+    - name: Run clamscan for virus scanning
+      shell: clamscan --remove --infected --recursive /
+      ignore_errors: yes
+
+    # Run Maldet for additional malware scanning
+    - name: Run maldet scan
+      shell: /usr/local/sbin/maldet -a /
+      ignore_errors: yes
+
+    # Run rkhunter for rootkit scanning
+    - name: Run rkhunter check
+      shell: rkhunter --check --skip-keypress
+      ignore_errors: yes
+
+    # Run chkrootkit for additional rootkit scanning
+    - name: Run chkrootkit check
+      shell: chkrootkit
+      ignore_errors: yes
+
+    # Get firewall rules using iptables
+    - name: Get iptables firewall rules
+      shell: iptables -L -v -n
+      register: iptables_rules
+
+    - name: Show firewall rules
+      debug:
+        var: iptables_rules.stdout_lines
+

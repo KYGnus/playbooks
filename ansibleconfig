@@ -1,0 +1,37 @@
+#!/bin/bash
+
+
+echo "start create Ansible Directory configurations"
+
+mkdir inventory
+echo "inventory Directory created [ OK ]"
+mkdir playbook
+echo "playbook Directory created [ OK ]"
+mkdir rules
+echo "rules Directory created [ OK ]"
+mkdir rules/tasks
+echo "/rules/tasks Directory created [ OK ]"
+touch rules/tasks/main.yml
+echo "main File created in rules/tasks [ OK ]"
+mkdir rules/vars
+echo "rules/vars Directory created [ OK ]"
+touch rules/vars/main.yml
+echo "main File Create in /rules/vars [ OK ]"
+mkdir rules/files
+echo "rules/files Directory created [ OK ]"
+mkdir rules/templates
+echo "rules/templates Directory created [ OK ]"
+mkdir rules/defaults
+echo "rules/defaults Directory created [ OK ]"
+mkdir rules/handlers
+echo "rules/handlers Directory created [ OK ]"
+mkdir group_vars
+echo "group_vars Directory created [ OK ]"
+mkdir host_vars
+echo "host_vars Directory created [ OK ]"
+touch ansible.cfg
+echo "ansible config File created [ OK ]"
+
+sleep 1
+
+echo "> Ansible Direcoty Structutr Created [ OK ]" 

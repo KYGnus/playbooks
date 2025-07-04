@@ -1,0 +1,41 @@
+---
+- name: Check OS and Hardware Information
+  hosts: all
+  become: yes   # Ensure sudo is used for privileged tasks
+
+  tasks:
+    - name: Gather OS Information
+      setup:
+        gather_subset:
+          - min
+          - hardware
+      register: os_info
+
+    - name: Show OS type and version
+      debug:
+        msg: |
+          OS: {{ os_info.ansible_facts.os_family }}
+          OS Version: {{ os_info.ansible_facts.distribution_version }}
+
+    - name: Check if Debian-based
+      debug:
+        msg: "The system is Debian-based"
+      when: os_info.ansible_facts.os_family == 'Debian'
+
+    - name: Check if RedHat-based
+      debug:
+        msg: "The system is RedHat-based"
+      when: os_info.ansible_facts.os_family == 'RedHat'
+
+    - name: Check if openSUSE-based
+      debug:
+        msg: "The system is openSUSE-based"
+      when: os_info.ansible_facts.os_family == 'Suse'
+
+    - name: Gather hardware data
+      debug:
+        msg: |
+          CPU Model: {{ os_info.ansible_facts.processor[0] }}
+          CPU Cores: {{ os_info.ansible_facts.processor_cores }}
+          Total RAM: {{ os_info.ansible_facts.memtotal_mb }} MB
+

@@ -1,0 +1,84 @@
+---
+- name: Check Hard Disk Health on All Servers
+  hosts: storage
+  become: yes
+  vars:
+    show_detailed_attributes: false
+
+  tasks:
+    - name: Install smartmontools if not present
+      package:
+        name: smartmontools
+        state: present
+      when: ansible_os_family != 'Windows'
+
+    - name: Get list of all physical disks
+      ansible.builtin.shell: |
+        lsblk -d -o NAME,ROTA,TYPE,SIZE,MODEL | awk '$2=="1" && $3=="disk" {print $0}'
+      register: physical_disks
+      changed_when: false
+
+    - name: Create empty list if no disks found
+      ansible.builtin.set_fact:
+        physical_disks: {"stdout_lines": []}
+      when: physical_disks.stdout_lines | length == 0
+
+    - name: Check SMART status of all disks
+      ansible.builtin.command: >
+        smartctl -H /dev/{{ item.split()[0] }}
+      register: smart_results
+      ignore_errors: yes
+      loop: "{{ physical_disks.stdout_lines }}"
+      loop_control:
+        label: "{{ item }}"
+
+    - name: Print health header
+      ansible.builtin.debug:
+        msg: |
+          ===== DISK HEALTH REPORT FOR {{ inventory_hostname | upper }} =====
+          Generated on {{ ansible_date_time.date }} at {{ ansible_date_time.time }}
+          Detected Disks: {{ physical_disks.stdout_lines | length }}
+      when: physical_disks.stdout_lines | length > 0
+
+    - name: Show disk status
+      ansible.builtin.debug:
+        var: item
+      loop: "{{ physical_disks.stdout_lines | zip(smart_results.results) | list }}"
+      loop_control:
+        label: "Disk {{ item.0.split()[0] }}"
+      when: physical_disks.stdout_lines | length > 0
+
+    - name: Compile disk health report
+      ansible.builtin.set_fact:
+        health_report: |
+          {% for disk_line, result in physical_disks.stdout_lines | zip(smart_results.results) %}
+          Disk: /dev/{{ disk_line.split()[0] }} ({{ disk_line.split()[3:] | join(' ') }})
+          Status: {% if result is failed %}❌ FAILED
+          Error: {{ result.stderr | default(result.stdout | default('Unknown error')) | trim }}
+          {% elif 'PASSED' in result.stdout %}✅ PASSED
+          {% else %}⚠️ UNKNOWN - {{ result.stdout | trim }}{% endif %}
+          {% endfor %}
+      when: physical_disks.stdout_lines | length > 0
+
+    - name: Display health report
+      ansible.builtin.debug:
+        msg: "{{ health_report.split('\n') }}"
+      when: physical_disks.stdout_lines | length > 0
+
+    - name: Print summary
+      ansible.builtin.debug:
+        msg: |
+          {% set failed = smart_results.results | select('failed') | list %}
+          {% set passed = smart_results.results | reject('failed') | select('stdout', 'PASSED') | list %}
+          SUMMARY:
+          - Total disks checked: {{ smart_results.results | length }}
+          - Healthy disks: {{ passed | length }}
+          - Failed disks: {{ failed | length }}
+          {% if failed %}CRITICAL: Failed disks - {% for result in failed %}/dev/{{ result.item.split()[0] }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}
+          ===== END OF REPORT =====
+      when: physical_disks.stdout_lines | length > 0
+
+    - name: No disks found warning
+      ansible.builtin.debug:
+        msg: "⚠️ WARNING: No rotational disks found on this system"
+      when: physical_disks.stdout_lines | length == 0

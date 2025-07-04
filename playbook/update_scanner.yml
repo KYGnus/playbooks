@@ -1,0 +1,37 @@
+---
+- name: Update Scan systems for malware and rootkits
+  hosts: storage
+  become: true
+  tasks:
+
+    # Scan system with ClamAV
+    - name: Run freshclam for virus updating database
+      shell: freshclam
+      ignore_errors: yes
+      register: freshclam_result
+      failed_when: freshclam_result.rc != 0  # Ensure it registers an error if it fails
+      notify:
+        - log_error
+
+    # Run Maldet for additional malware scanning
+    - name: Run maldet update
+      shell: /usr/local/sbin/maldet -u
+      ignore_errors: yes
+      register: maldet_result
+      failed_when: maldet_result.rc != 0
+      notify:
+        - log_error
+
+    # Run rkhunter for rootkit scanning
+    - name: Run rkhunter update
+      shell: rkhunter --update
+      ignore_errors: yes
+      register: rkhunter_result
+      failed_when: rkhunter_result.rc != 0
+      notify:
+        - log_error
+
+  handlers:
+    - name: log_error
+      debug:
+        msg: "A command failed. The task has been skipped but will continue execution."
